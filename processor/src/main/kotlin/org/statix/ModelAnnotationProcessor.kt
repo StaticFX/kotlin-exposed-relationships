@@ -6,8 +6,6 @@ import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.validate
-import statix.org.Model
-import kotlin.math.log
 
 class ModelAnnotationProcessor(
     private val codeGenerator: CodeGenerator,
@@ -19,13 +17,13 @@ class ModelAnnotationProcessor(
 
         logger.info("Found ${symbols.count()} symbols")
 
-        symbols.forEach {
+        symbols.forEach { it ->
             if (!it.validate()) return@forEach
             val containingClass = it as? KSClassDeclaration ?: return@forEach
 
             val properties = retrieveProperties(containingClass)
-            val modelProperties = properties.filter {
-                it.type.resolve().declaration.annotations.any { annotation -> annotation.shortName.asString() == "Model" }
+            val modelProperties = properties.filter { property ->
+                isModelProperty(property)
             }
 
             if (properties.isEmpty()) {
@@ -35,7 +33,7 @@ class ModelAnnotationProcessor(
 
             logger.info("Received ${properties.size} properties")
 
-            val dataClassGenerator = DataClassGenerator(logger)
+            val dataClassGenerator = DataClassGenerator(logger, resolver)
 
             val dataClass = dataClassGenerator.generateDataClass(containingClass, modelProperties, properties)
             val packageName = containingClass.packageName.asString()
@@ -49,6 +47,27 @@ class ModelAnnotationProcessor(
         }
 
         return emptyList()
+    }
+
+    private fun isModelProperty(property: KSPropertyDeclaration): Boolean {
+        logger.info("Checking ${property.simpleName.asString()}")
+        val declaration = property.type.resolve().declaration as KSClassDeclaration
+
+        if (declaration.annotations.any { annotation -> annotation.shortName.asString() == "Model" }) return true
+
+        if (declaration.typeParameters.isNotEmpty()) {
+            val ksType = property.type.resolve()
+
+            for (argument in ksType.arguments) {
+                val resolvedType = argument.type?.resolve()
+
+                if (resolvedType != null) {
+                    val genericClass = resolvedType.declaration as KSClassDeclaration
+                    return genericClass.annotations.any { annotation -> annotation.shortName.asString() == "Model" }
+                }
+            }
+        }
+        return false
     }
 
     private fun retrieveProperties(classDeclaration: KSClassDeclaration): List<KSPropertyDeclaration> {

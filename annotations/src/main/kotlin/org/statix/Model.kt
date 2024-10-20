@@ -1,4 +1,4 @@
-package statix.org
+package org.statix
 
 @Retention(AnnotationRetention.SOURCE)
 @Target(AnnotationTarget.CLASS)

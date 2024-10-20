@@ -1,15 +1,9 @@
 package org.statix
 
-import com.google.devtools.ksp.isConstructor
-import statix.org.HasOne
+import statix.org.org.statix.HasOne
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
 import com.google.devtools.ksp.validate
-import com.squareup.kotlinpoet.KModifier
-import com.squareup.kotlinpoet.PropertySpec
-import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.ksp.toTypeName
-import kotlin.math.log
 
 class RelationAnnotationProcessor(
     private val codeGenerator: CodeGenerator,

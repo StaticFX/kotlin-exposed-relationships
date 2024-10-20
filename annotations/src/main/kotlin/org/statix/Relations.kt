@@ -1,4 +1,4 @@
-package statix.org
+package statix.org.org.statix
 
 import org.jetbrains.exposed.dao.Entity
 import kotlin.reflect.KClass
