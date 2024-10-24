@@ -15,7 +15,6 @@ Using the with() selector allows to specify which relationships should be resolv
 <details>
     <summary>User.kt</summary>
 
-    ```kotlin
     @Model
     class User(id: EntityID<Int>) : Entity<Int>(id) {
     companion object : EntityClass<Int, User>(Users)
@@ -26,7 +25,6 @@ Using the with() selector allows to specify which relationships should be resolv
         @HasMany
         val comments by Comment referrersOn Comments.user
     }            
-    ```
 </details>
 
 <details>
@@ -78,4 +76,107 @@ user.toModel().with {
     }
 }
 ```
+
+## Usage
+
+#### Prerequisites
+
+1.  
+ 
+#### Code usage
+
+1. To create model classes you can use the `@Model` annotation on your desired entity.
+2. Then rebuild your project using `gradle clean build`. This will generate all necessary classes and functions.
+3. Afterward you should be able to import the generated classed and functions into your project.
+4. Use the `toModel()` extension function to get a reference to your model.
+5. Use the `with()` function to select which relationships should be resolved.
+6. _optional_ - select more relationships in the `with()` context
+
+## How it works
+
+KESR leverages KSP as a compiler addon to analyze the code you annotated with the `@Model` annotation.
+All declared properties are received and filtered into generic and model properties. Generic properties include all properties not related to another model. 
+Model properties are related to another model. The processor finds the by looking for the EntityID type in the property.
+
+Then a new data class based on these properties is generated. The constructor includes all generic properties, and transient fields for the relations.
+An inner Relations class is used to lazy load the relationships and provide context to the selector. 
+
+### Example
+
+Let's assume the given class:
+```kotlin
+@Model
+class User(id: EntityID<Int>) : Entity<Int>(id) {
+    companion object : EntityClass<Int, User>(Users)
+    var name by Users.name
+
+    @HasMany
+    val posts by Post referrersOn Posts.user
+
+    @HasMany
+    val comments by Comment referrersOn Comments.user
+
+    @HasMany
+    val likes by Like referrersOn Likes.user
+}
+```
+The processor will generate the following based on this:
+```kotlin
+@Serializable
+public data class UserModelDTO(
+  public val name: String,
+  public val id: Int,
+  @Transient
+  private val postsRelation: List<Post>? = null,
+  @Transient
+  private val commentsRelation: List<Comment>? = null,
+  @Transient
+  private val likesRelation: List<Like>? = null,
+) {
+  public var posts: List<PostModelDTO>? = null
+
+  public var comments: List<CommentModelDTO>? = null
+
+  public var likes: List<LikeModelDTO>? = null
+
+  @Transient
+  private val relations: Relations = Relations()
+
+  public suspend fun with(block: suspend Relations.() -> Unit): UserModelDTO {
+    relations.block()
+    return this
+  }
+
+  public inner class Relations {
+    private val posts: List<PostModelDTO> by lazy { postsRelation!!.map { it.toModel() }}
+
+    private val comments: List<CommentModelDTO> by lazy { commentsRelation!!.map { it.toModel() }}
+
+    private val likes: List<LikeModelDTO> by lazy { likesRelation!!.map { it.toModel() }}
+
+    public suspend fun posts(block: suspend PostModelDTO.Relations.() -> Unit = {}) {
+      dbQuery {
+          this@UserModelDTO.posts = posts
+      }
+      posts.forEach { it.with(block) }
+    }
+
+    public suspend fun comments(block: suspend CommentModelDTO.Relations.() -> Unit = {}) {
+      dbQuery {
+          this@UserModelDTO.comments = comments
+      }
+      comments.forEach { it.with(block) }
+    }
+
+    public suspend fun likes(block: suspend LikeModelDTO.Relations.() -> Unit = {}) {
+      dbQuery {
+          this@UserModelDTO.likes = likes
+      }
+      likes.forEach { it.with(block) }
+    }
+  }
+}
+```
+
+
 
