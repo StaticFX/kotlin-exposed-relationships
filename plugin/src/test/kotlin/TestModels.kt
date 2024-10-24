@@ -48,6 +48,7 @@ class Post(id: EntityID<Int>) : Entity<Int>(id) {
 
     @BelongsTo
     var user by User referencedOn Posts.user
+
     var content by Posts.content
 
     @HasMany
