@@ -1,4 +1,4 @@
-rootProject.name = "ktor-relationships"
+rootProject.name = "kotlin-exposed-relationships"
 
 pluginManagement {
     val kotlinVersion = "2.0.21"

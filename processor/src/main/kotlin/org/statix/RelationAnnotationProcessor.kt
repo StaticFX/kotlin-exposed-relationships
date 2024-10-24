@@ -1,6 +1,5 @@
 package org.statix
 
-import statix.org.org.statix.HasOne
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
 import com.google.devtools.ksp.validate

@@ -8,111 +8,98 @@ import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
+import kotlinx.serialization.SerialName
 import java.util.*
+import kotlin.math.log
 
-class DataClassGenerator(private val logger: KSPLogger, private val resolver: Resolver) {
+class DataClassGenerator(private val logger: KSPLogger, entityClass: KSClassDeclaration, private val modelPackage: String, private val generatedPackage: String) {
+    private val dataClassName = "${entityClass.simpleName.asString()}ModelDTO"
+    private val dataClassBuilder = TypeSpec.classBuilder(dataClassName).addModifiers(KModifier.DATA)
+        .addAnnotation(AnnotationSpec.builder(ClassName("kotlinx.serialization", "Serializable")).build())
+    private val dataClassConstructor = FunSpec.constructorBuilder()
+
+    private val innerRelationsClass = TypeSpec.classBuilder("Relations").addModifiers(KModifier.INNER)
+
     /**
      * Builds a data class based on the given Class Declaration and properties provided
-     * @param entityClass class annotated with @Model
-     * @param modelProperties other classed as property with @Model annotation
      * @param properties every other non ignored property
      */
     fun generateDataClass(
-        entityClass: KSClassDeclaration,
-        modelProperties: List<KSPropertyDeclaration>,
         properties: List<KSPropertyDeclaration>
     ): TypeSpec {
-        val className = "${entityClass.simpleName.asString()}ModelDTO"
 
-        val dataClassBuilder = TypeSpec.classBuilder(className)
-            .addModifiers(KModifier.DATA)
-
-        logger.info("Found ${modelProperties.size} model properties in data class $className")
-
-        val constructor = FunSpec.constructorBuilder()
-        val innerClass = TypeSpec.classBuilder("Relations").addModifiers(KModifier.INNER)
-
-        modelProperties.forEach { buildModelProperty(it, innerClass, className, dataClassBuilder, constructor) }
-
+        val modelProperties = properties.filter { isModelProperty(it) }
         val genericProperties = properties - modelProperties.toSet()
 
         // Add properties to the data class
-        genericProperties.forEach { property ->
-            val propertyName = property.simpleName.asString()
-            var propertyType = property.type.resolve().toTypeName() // Convert to TypeName for KSP
+        genericProperties.forEach { buildProperty(it) }
+        modelProperties.forEach { buildModelProperty(it) }
 
-            logger.info("Found generic property $propertyType")
+        buildWithFunction()
+        buildRelationsClassProperty()
 
-            if (propertyType.toString().startsWith("org.jetbrains.exposed.dao.id.EntityID")) {
-                val genericType = (propertyType as ParameterizedTypeName).typeArguments[0]
-                propertyType = genericType
-            }
+        dataClassBuilder.addType(innerRelationsClass.build())
+        dataClassBuilder.primaryConstructor(dataClassConstructor.build())
 
-            constructor.addParameter(propertyName, propertyType)
-            dataClassBuilder.addProperty(
-                PropertySpec.builder(propertyName, propertyType).initializer(propertyName).build()
-            )
-        }
+        return dataClassBuilder.build()
+    }
 
-        val withFunction = FunSpec.builder("with")
-            .addParameter("block", LambdaTypeName.get(receiver = ClassName("", "Relations"), returnType = UNIT))
-            .returns(ClassName("", className))
-            .addCode(CodeBlock.of("relations.block()\n"))
-            .addCode(CodeBlock.of("return this"))
-            .build()
-
+    private fun buildRelationsClassProperty() {
         dataClassBuilder.addProperty(
             PropertySpec.builder("relations", ClassName("", "Relations"))
                 .initializer(CodeBlock.of("Relations()"))
                 .addModifiers(KModifier.PRIVATE)
+                .addAnnotation(ClassName("kotlinx.serialization", "Transient"))
                 .build()
         )
+    }
 
-        dataClassBuilder.addType(innerClass.build())
+    private fun buildWithFunction() {
+        val withFunction = FunSpec.builder("with")
+            .addModifiers(KModifier.SUSPEND)
+            .addParameter("block", LambdaTypeName.get(receiver = ClassName("", "Relations"), returnType = UNIT).copy(suspending = true))
+            .returns(ClassName(generatedPackage, dataClassName))
+            .addCode(CodeBlock.of("relations.block()\n"))
+            .addCode(CodeBlock.of("return this"))
+            .build()
+
         dataClassBuilder.addFunction(withFunction)
+    }
 
-        dataClassBuilder.primaryConstructor(constructor.build())
-        return dataClassBuilder.build()
+    private fun buildProperty(property: KSPropertyDeclaration) {
+        val propertyName = property.simpleName.asString()
+        var propertyType = property.type.resolve().toTypeName() // Convert to TypeName for KSP
+
+        if (propertyType.toString().startsWith("org.jetbrains.exposed.dao.id.EntityID")) {
+            val genericType = (propertyType as ParameterizedTypeName).typeArguments[0]
+            propertyType = genericType
+        }
+
+        dataClassConstructor.addParameter(propertyName, propertyType)
+        dataClassBuilder.addProperty(
+            PropertySpec.builder(propertyName, propertyType).initializer(propertyName).build()
+        )
     }
 
     private fun buildModelProperty(
         property: KSPropertyDeclaration,
-        relationsClass: TypeSpec.Builder,
-        className: String,
-        dataClass: TypeSpec.Builder,
-        constructor: FunSpec.Builder
     ) {
         var declaredClass = property.type.resolve().declaration as KSClassDeclaration
 
         if (declaredClass.typeParameters.isNotEmpty()) {
+            // handle SizedIterable relations
             val arguments = property.type.resolve().arguments
-            var resolvedGeneric = false
 
-            for (argument in arguments) {
-                val type = argument.type?.resolve()
-                    ?: return logger.error("Type from class ${declaredClass.simpleName} is null!")
-
-                logger.info(type.declaration.annotations.joinToString {
-                    it.annotationType.resolve().declaration.qualifiedName?.asString() ?: ""
-                })
-
-                if (isAnnotatedWithModel(type.declaration.annotations)) {
-
-                    // in this case the model is actually wrapped inside another class for example
-                    // SizedIterable<Model> the model can be retrieved through this logic
-
-                    logger.info("Converting ${declaredClass.simpleName.asString()} to ${type.declaration.simpleName.asString()}")
-                    declaredClass = type.declaration as KSClassDeclaration
-                    declaredClass = getListOfDeclaredClass(declaredClass, resolver)
-                    resolvedGeneric = true
-                }
-            }
-
-            if (!resolvedGeneric) {
-                logger.error("Class ${declaredClass.simpleName.asString()} is generic, but wrapped class is not a valid @Model. Please use the @Model annotation in relationships!")
+            if (!genericsIncludeModel(arguments)) {
+                logger.error("Class ${declaredClass.simpleName.asString()} is generic, but generic types to not have Model annotation")
                 return
             }
+
+            declaredClass = receiveModelAnnotatedGenerics(arguments).first()
+            buildMultiRelationProperty(property, declaredClass)
+            return
         }
 
         if (declaredClass.annotations.none { it.shortName.asString() == "Model" }) {
@@ -120,81 +107,135 @@ class DataClassGenerator(private val logger: KSPLogger, private val resolver: Re
             return
         }
 
-        val propertyClassName = declaredClass.simpleName.getShortName()
-
-        val type = ClassName("", "${propertyClassName}ModelDTO")
-        val propertyName = propertyClassName.replaceFirstChar { char -> char.lowercase(Locale.getDefault()) }
-
-        val relationPropertyName = "${propertyName}Relation"
-        val relationPropertyType = property.type.resolve().toTypeName()
-        val relationReceiverType = ClassName("", type.simpleName)\
-
-        val lazyRelationProperty = PropertySpec.builder(propertyName, type)
-            .addModifiers(KModifier.PRIVATE)
-            .delegate(CodeBlock.of("lazy { $relationPropertyName.toModel() }"))
-            .build()
-
-        relationsClass.addProperty(lazyRelationProperty)
-
-        relationsClass.addFunction(
-            FunSpec.builder(propertyName)
-                .addParameter(
-                    ParameterSpec
-                        .builder(
-                            "block",
-                            LambdaTypeName.get(receiver = relationReceiverType, returnType = UNIT)
-                        )
-                        .defaultValue("{}")
-                        .build()
-                )
-                .addCode(CodeBlock.of("this@$className.$propertyName = $propertyName \n"))
-                .addCode(CodeBlock.of("$propertyName.apply(block)"))
-                .build()
-        )
-
-        val relationProperty = ParameterSpec.builder(relationPropertyName, relationPropertyType)
-            .addAnnotation(ClassName("kotlinx.serialization", "Transient"))
-
-        constructor.addParameter(relationProperty.build())
-        dataClass.addProperty(
-            PropertySpec.builder(relationPropertyName, relationPropertyType).initializer(relationPropertyName)
-                .addModifiers(KModifier.PRIVATE)
-                .build()
-        )
-
-        val property = PropertySpec.builder(propertyName, type)
-        property.mutable(true)
-        property.addModifiers(KModifier.LATEINIT).addModifiers(KModifier.PRIVATE)
-
-        dataClass.addProperty(property.build())
+        buildSingleRelationProperty(property)
     }
 
-    private fun getListOfDeclaredClass(declaredClass: KSClassDeclaration, resolver: Resolver): KSClassDeclaration {
-        val listClassDeclaration = resolver.getClassDeclarationByName(resolver.getKSNameFromString("kotlin.collections.List"))!!
+    private fun buildSingleRelationProperty(property: KSPropertyDeclaration) {
+        val propertyClassName = property.simpleName.asString()
 
-        val declaredClassTypeReference: KSTypeReference = declaredClass.asType()
+        val qualifiedName = property.type.resolve().declaration.qualifiedName?.getShortName() ?: return logger.error("Error while resolving type for property")
+        val type = ClassName(modelPackage, qualifiedName)
 
-        val parameterizedListType = listClassDeclaration.asType(listOf(typeArgument))
+        val propertyName = propertyClassName.replaceFirstChar { char -> char.lowercase(Locale.getDefault()) }
 
-        return parameterizedListType.declaration as KSClassDeclaration
+        buildRelationProperty(propertyName, type, type.simpleName,false)
+    }
+
+    private fun buildMultiRelationProperty(property: KSPropertyDeclaration, mappedClass: KSClassDeclaration) {
+        val propertyClassName = property.simpleName.getShortName()
+
+        val className = mappedClass.toClassName()
+
+        val type = List::class.asTypeName().parameterizedBy(className)
+
+        val propertyName = propertyClassName.replaceFirstChar { char -> char.lowercase(Locale.getDefault()) }
+
+        buildRelationProperty(propertyName, type, mappedClass.toClassName().simpleName, true)
+    }
+
+    private fun buildRelationProperty(name: String, type: TypeName, pureType: String, isMulti: Boolean) {
+        val resolvedRelationType = resolveRelationType(pureType, isMulti)
+        val relationReceiverType = resolveReceiverRelationType(pureType)
+
+        val relationPropertyName = "${name}Relation"
+
+        val lazyRelationProperty = buildLazyRelationProperty(name, resolvedRelationType, relationPropertyName, isMulti)
+        innerRelationsClass.addProperty(lazyRelationProperty)
+
+        val innerRelationFunction = buildInnerRelationFunction(name, relationReceiverType, name, isMulti)
+        innerRelationsClass.addFunction(innerRelationFunction)
+
+        val relationProperty = ParameterSpec.builder(relationPropertyName, type.copy(nullable = true))
+            .addAnnotation(ClassName("kotlinx.serialization", "Transient"))
+            .defaultValue("%L", "null")
+
+        dataClassConstructor.addParameter(relationProperty.build())
+        dataClassBuilder.addProperty(
+            PropertySpec.builder(relationPropertyName, type.copy(nullable = true)).initializer(relationPropertyName)
+                .addModifiers(KModifier.PRIVATE)
+                .initializer(relationPropertyName)
+                .build()
+        )
+
+        val lateInitRelationProperty = PropertySpec.builder(name, resolvedRelationType.copy(nullable = true))
+            .mutable(true)
+            .initializer("null")
+            .build()
+
+        val serializedProperty = buildSerializedRelationProperty(name, resolvedRelationType, isMulti)
+
+        //dataClassBuilder.addProperty(serializedProperty)
+        dataClassBuilder.addProperty(lateInitRelationProperty)
+    }
+
+    private fun buildSerializedRelationProperty(name: String, resolvedRelationType: TypeName, isMulti: Boolean): PropertySpec {
+        return PropertySpec.builder("serialized${name.replaceFirstChar { it.uppercase() }}", resolvedRelationType.copy(nullable = true))
+            .mutable(false)
+            .getter(FunSpec.getterBuilder().addStatement("return if (::$name.isInitialized) $name else null").build())
+            .addAnnotation(AnnotationSpec.builder(SerialName::class).addMember(""""$name"""").build())
+            .build()
+    }
+
+    private fun resolveRelationType(type: String, isMulti: Boolean): TypeName {
+        if (isMulti) {
+            return List::class.asTypeName().parameterizedBy(ClassName(generatedPackage, "${type}ModelDTO"))
+        }
+
+        return ClassName(generatedPackage, "${type}ModelDTO")
+    }
+
+    private fun resolveReceiverRelationType(type: String): TypeName {
+        return ClassName(generatedPackage, "${type}ModelDTO.Relations")
+    }
+
+    private fun buildLazyRelationProperty(propertyName: String, propertyType: TypeName, relationPropertyName: String, isMulti: Boolean): PropertySpec {
+        return PropertySpec.builder(propertyName, propertyType)
+            .addModifiers(KModifier.PRIVATE)
+            .delegate(CodeBlock.of("lazy { ${if (isMulti) "$relationPropertyName!!.map { it.toModel() }" else "$relationPropertyName!!.toModel()" }}"))
+            .build()
+    }
+
+    private fun buildInnerRelationFunction(functionName: String, lambdaReceiver: TypeName, relationPropertyName: String, isMulti: Boolean): FunSpec {
+        val applyCodeBlock = if (isMulti) "$relationPropertyName.forEach { it.with(block) }" else "$relationPropertyName.with { block() }"
+        val codeBlock = """
+            dbQuery {
+                this@$dataClassName.$relationPropertyName = $relationPropertyName
+            }
+            $applyCodeBlock
+        """.trimIndent()
+
+
+        return FunSpec.builder(functionName)
+            .addModifiers(KModifier.SUSPEND)
+            .addParameter(
+                ParameterSpec
+                    .builder(
+                        "block",
+                        LambdaTypeName.get(receiver = lambdaReceiver, returnType = UNIT).copy(suspending = true)
+                    )
+                    .defaultValue("{}")
+                    .build()
+            )
+            .addCode(codeBlock)
+            .build()
     }
 }
 
-fun createToModelExtensionFunction(entityClass: KSClassDeclaration, typeSpec: TypeSpec, modelProperties: List<KSPropertyDeclaration>, properties: List<KSPropertyDeclaration>): FunSpec {
+fun createToModelExtensionFunction(entityClass: KSClassDeclaration, returns: TypeSpec, properties: List<KSPropertyDeclaration>, packageName: String): FunSpec {
 
-    val returnTypeName = typeSpec.name!!
+    val returnTypeName = returns.name!!
+    val type = ClassName(packageName, returnTypeName)
 
-    val type = ClassName("", returnTypeName)
+    val modelProperties = properties.filter { isModelProperty(it) }
+    val genericProperties = properties - modelProperties.toSet()
 
-    val sortedProperties = modelProperties + (properties - modelProperties.toSet())
+    val modelsCodeblock = modelProperties.joinToString { if (genericsIncludeModel(it.type.resolve().arguments)) "${it.simpleName.asString()}.toList()" else it.simpleName.asString() }
 
-    val returnStatement = "return $returnTypeName(${sortedProperties.joinToString(", ") {
-        if (it.type.resolve().declaration.qualifiedName?.asString()?.startsWith("org.jetbrains.exposed.dao.id.EntityID") == true) {
-            "${it.simpleName.asString()}.value"
-        } else {
-            it.simpleName.asString()
-        }
-    }})"
+    val propertiesCodeBlock = genericProperties.joinToString(", ") { if (isEntityProperty(it)) "this@toModel.${it.simpleName.asString()}.value" else it.simpleName.asString() }
+
+    val combinedCodeBlock = "($propertiesCodeBlock${ if (propertiesCodeBlock.isNotEmpty() && modelsCodeblock.isNotEmpty()) ", " else "" }$modelsCodeblock)"
+
+    val returnStatement = "return transaction { $returnTypeName$combinedCodeBlock }"
 
     val function = FunSpec.builder("toModel")
         .receiver(entityClass.asStarProjectedType().toTypeName())
