@@ -81,7 +81,33 @@ user.toModel().with {
 
 #### Prerequisites
 
-1.  
+Because this library is based on KSP, Kotlin Exposed and kotlinx serialization, you will need to also add these
+libraries to your project.
+
+Currently KSER uses kotlin 2.0.21 and exposed 0.55.0
+
+```kotlin
+plugins {
+    id("com.google.devtools.ksp") version "2.0.21-1.0.25"
+    kotlin("plugin.serialization") version "2.0.20"
+}
+//for json serialization.
+implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+
+implementation("org.jetbrains.exposed:exposed-core:$kotlinExposedVersion")
+implementation("org.jetbrains.exposed:exposed-dao:$kotlinExposedVersion")
+```
+Now the KSER libraries can be added as well
+
+The latest release of KSER is 1.0.0
+
+```kotlin
+implementation("com.github.StaticFX.kotlin-exposed-relationships:annotations:$kserVerion")
+ksp("com.github.StaticFX.kotlin-exposed-relationships:processor:$kserVerion")
+```
+
+To test if you have installed the compiler plugin correctly, use 
+``gradle kspKotlin``
  
 #### Code usage
 
@@ -91,6 +117,11 @@ user.toModel().with {
 4. Use the `toModel()` extension function to get a reference to your model.
 5. Use the `with()` function to select which relationships should be resolved.
 6. _optional_ - select more relationships in the `with()` context
+
+## Current limitations
+
+1. Because this library uses KSP, there is no on the fly code generation. So you will have to run `gradle kspKotlin` everytime you annotate a new model.
+2. Currently, there is no real way to get database entities from models, but this on the roadmap.
 
 ## How it works
 
@@ -178,5 +209,15 @@ public data class UserModelDTO(
 }
 ```
 
+## Roadmap
+
+- [ ] Add CI/CD Pipeline with automatic release
+- [ ] Enhance documentation, by generating javaDocs
+- [ ] Publish to maven central as well
+- [ ] Find a workaround for nullable attributes
+
+## Contributing 
+
+Every contribution is welcomed, please start by opening a new issue.
 
 
