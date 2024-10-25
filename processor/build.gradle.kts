@@ -7,6 +7,11 @@ plugins {
 repositories {
 }
 
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
 dependencies {
     implementation(kotlin("stdlib"))
     implementation(project(":annotations"))

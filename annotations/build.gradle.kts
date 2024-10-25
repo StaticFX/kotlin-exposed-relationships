@@ -9,6 +9,11 @@ repositories {
     mavenCentral()
 }
 
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
 dependencies {
     implementation("org.jetbrains.exposed:exposed-core:$kotlinExposedVersion")
     implementation("org.jetbrains.exposed:exposed-dao:$kotlinExposedVersion")
