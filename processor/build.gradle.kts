@@ -3,9 +3,6 @@ plugins {
     kotlin("plugin.serialization")
 }
 
-group = "org.statix"
-version = "1.0-SNAPSHOT"
-
 dependencies {
     implementation(kotlin("stdlib"))
     implementation(project(":annotations"))

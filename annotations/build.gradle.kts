@@ -2,9 +2,6 @@ plugins {
     kotlin("jvm")
 }
 
-group = "statix.org"
-version = "0.0.1"
-
 val kotlinExposedVersion = "0.55.0"
 
 repositories {

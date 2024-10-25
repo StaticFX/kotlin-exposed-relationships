@@ -7,9 +7,6 @@ plugins {
 val kotlinExposedVersion = "0.55.0"
 val kotlin_version: String = "2.0.21"
 
-group = "statix.org"
-version = "0.0.1"
-
 dependencies {
     implementation(kotlin("stdlib"))
     implementation("org.jetbrains.exposed:exposed-core:$kotlinExposedVersion")
