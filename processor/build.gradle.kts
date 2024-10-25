@@ -2,6 +2,7 @@ plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
     `maven-publish`
+    id("com.gradleup.shadow") version "8.3.0"
 }
 
 repositories {
@@ -36,6 +37,12 @@ publishing {
     }
 }
 
-sourceSets.main {
-    java.srcDirs("src/main/kotlin")
+tasks {
+    shadowJar {
+        minimize()
+    }
+
+    build {
+        dependsOn(shadowJar)
+    }
 }

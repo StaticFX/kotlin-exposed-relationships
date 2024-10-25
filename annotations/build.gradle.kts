@@ -1,6 +1,8 @@
 plugins {
     kotlin("jvm")
     `maven-publish`
+    id("com.gradleup.shadow") version "8.3.0"
+
 }
 
 val kotlinExposedVersion = "0.55.0"
@@ -38,6 +40,16 @@ publishing {
             artifactId = "annotations"
             version = rootProject.version.toString()
         }
+    }
+}
+
+tasks {
+    shadowJar {
+        minimize()
+    }
+
+    build {
+        dependsOn(shadowJar)
     }
 }
 
