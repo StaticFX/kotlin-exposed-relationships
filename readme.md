@@ -30,7 +30,6 @@ Using the with() selector allows to specify which relationships should be resolv
 <details>
     <summary>Post.kt</summary>
 
-    ```kotlin
     @Model
     class Post(id: EntityID<Int>) : Entity<Int>(id) {
     companion object : EntityClass<Int, Post>(Posts)
@@ -42,13 +41,11 @@ Using the with() selector allows to specify which relationships should be resolv
         @HasMany
         val comments by Comment referrersOn Comments.post
     }
-    ```
 </details>
 
 <details>
     <summary>Comment.kt</summary>
 
-    ```kotlin
     @Model
     class Comment(id: EntityID<Int>) : Entity<Int>(id) {
     companion object : EntityClass<Int, Comment>(Comments)
@@ -60,7 +57,6 @@ Using the with() selector allows to specify which relationships should be resolv
         @BelongsTo
         var user by User referencedOn Comments.user
     }
-    ```
 </details>
 
 ### Serialize Relationship
@@ -102,6 +98,10 @@ Now the KSER libraries can be added as well
 The latest release of KSER is 1.0.0
 
 ```kotlin
+repositories {
+    maven { setUrl("https://jitpack.io") }
+}
+    
 implementation("com.github.StaticFX.kotlin-exposed-relationships:annotations:$kserVerion")
 ksp("com.github.StaticFX.kotlin-exposed-relationships:processor:$kserVerion")
 ```
