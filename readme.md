@@ -95,7 +95,7 @@ implementation("org.jetbrains.exposed:exposed-dao:$kotlinExposedVersion")
 ```
 Now the KSER libraries can be added as well
 
-The latest release of KSER is 1.0.0
+The latest release of KSER is 1.0.1
 
 ```kotlin
 repositories {
