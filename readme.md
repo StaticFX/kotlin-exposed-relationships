@@ -118,6 +118,16 @@ To test if you have installed the compiler plugin correctly, use
 5. Use the `with()` function to select which relationships should be resolved.
 6. _optional_ - select more relationships in the `with()` context
 
+### Attributes
+
+KSER allows you to add custom attributes to a model using a map. These will then be serialized at runtime. 
+
+Usage
+```kotlin
+model.attributes["some value"] = JsonPrimitive("Test")
+```
+
+Use kotlinx.serialization's inbuilt Json functions to build a JSON Element!
 ## Current limitations
 
 1. Because this library uses KSP, there is no on the fly code generation. So you will have to run `gradle kspKotlin` everytime you annotate a new model.
@@ -213,8 +223,9 @@ public data class UserModelDTO(
 
 - [ ] Add CI/CD Pipeline with automatic release
 - [ ] Enhance documentation, by generating javaDocs
-- [ ] Publish to maven central as well
 - [ ] Find a workaround for nullable attributes
+- [ ] Support more custom datatypes like DateTimes
+- [x] Support more attributes
 
 ## Contributing 
 
