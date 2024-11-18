@@ -22,6 +22,10 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlin_version")
 }
 
+kotlin {
+    jvmToolchain(21)
+}
+
 tasks.test {
     useJUnitPlatform()
 }

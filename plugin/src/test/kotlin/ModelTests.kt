@@ -1,6 +1,8 @@
 import generated.toModel
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -110,7 +112,19 @@ class ModelTests {
         }
 
         val json = jsonSerializer.encodeToJsonElement(model)
-        println(json)
-
+        assertEquals("""{"name":"TestUser","id":3,"posts":[{"content":"This is a post","id":2,"comments":[{"content":"Comment","id":1}]}],"comments":[{"content":"Comment","id":1,"post":{"content":"This is a post","id":2}}]}""", json.toString())
     }
+
+
+    @Test
+    fun testAttributes() {
+        prepareDB()
+        val user = prepareUser()
+        val model = transaction { user.toModel() }
+
+        model.attributes["some value"] = JsonPrimitive("Test")
+        val json = jsonSerializer.encodeToJsonElement(model)
+        assertEquals("""{"name":"TestUser","id":${user.id},"attributes":{"some value":"Test"}}""", json.toString())
+    }
+
 }

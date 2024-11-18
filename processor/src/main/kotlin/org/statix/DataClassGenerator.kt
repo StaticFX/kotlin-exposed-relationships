@@ -10,6 +10,7 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
 import java.util.*
 import kotlin.math.log
@@ -39,6 +40,7 @@ class DataClassGenerator(private val logger: KSPLogger, entityClass: KSClassDecl
 
         buildWithFunction()
         buildRelationsClassProperty()
+        buildAttributeProperty()
 
         dataClassBuilder.addType(innerRelationsClass.build())
         dataClassBuilder.primaryConstructor(dataClassConstructor.build())
@@ -54,6 +56,20 @@ class DataClassGenerator(private val logger: KSPLogger, entityClass: KSClassDecl
                 .addAnnotation(ClassName("kotlinx.serialization", "Transient"))
                 .build()
         )
+    }
+
+    private fun buildAttributeProperty() {
+        val name = "attributes"
+
+        val anyType = ClassName("kotlinx.serialization.json","JsonElement")
+
+        val type = MUTABLE_MAP
+            .parameterizedBy(String::class.asClassName(), anyType)
+
+        val property = PropertySpec.builder(name, type)
+            .initializer("mutableMapOf()").build()
+
+        dataClassBuilder.addProperty(property)
     }
 
     private fun buildWithFunction() {
