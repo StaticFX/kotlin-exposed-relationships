@@ -34,7 +34,7 @@ class ModelTests {
         }
     }
 
-    private fun prepareComment(user: User, post: Post) {
+    private fun prepareComment(user: User, post: Post): Comment {
         return transaction {
             Comment.new {
                 this.user = user
@@ -112,7 +112,7 @@ class ModelTests {
         }
 
         val json = jsonSerializer.encodeToJsonElement(model)
-        assertEquals("""{"name":"TestUser","id":3,"posts":[{"content":"This is a post","id":2,"comments":[{"content":"Comment","id":1}]}],"comments":[{"content":"Comment","id":1,"post":{"content":"This is a post","id":2}}]}""", json.toString())
+        assertEquals("""{"name":"TestUser","id":3,"posts":[{"content":"This is a post","id":2,"comments":[{"content":"Comment","createdAt":"${comment.createdAt}","id":1}]}],"comments":[{"content":"Comment","createdAt":"${comment.createdAt}","id":1,"post":{"content":"This is a post","id":2}}]}""", json.toString())
     }
 
 

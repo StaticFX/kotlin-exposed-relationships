@@ -93,10 +93,17 @@ class DataClassGenerator(private val logger: KSPLogger, entityClass: KSClassDecl
             propertyType = genericType
         }
 
+        val customMapping = TypeMappings.entries.firstOrNull { it.type == propertyType.toString() }
+
+        if (customMapping != null) {
+            logger.info(("Found custom mappings for: $propertyType"))
+            propertyType = ClassName(customMapping.toPackage, customMapping.toClass)
+        }
+
+        val propertySpec = PropertySpec.builder(propertyName, propertyType).initializer(propertyName)
+
         dataClassConstructor.addParameter(propertyName, propertyType)
-        dataClassBuilder.addProperty(
-            PropertySpec.builder(propertyName, propertyType).initializer(propertyName).build()
-        )
+        dataClassBuilder.addProperty(propertySpec.build())
     }
 
     private fun buildModelProperty(
@@ -247,7 +254,7 @@ fun createToModelExtensionFunction(entityClass: KSClassDeclaration, returns: Typ
 
     val modelsCodeblock = modelProperties.joinToString { if (genericsIncludeModel(it.type.resolve().arguments)) "${it.simpleName.asString()}.toList()" else it.simpleName.asString() }
 
-    val propertiesCodeBlock = genericProperties.joinToString(", ") { if (isEntityProperty(it)) "this@toModel.${it.simpleName.asString()}.value" else it.simpleName.asString() }
+    val propertiesCodeBlock = genericProperties.joinToString(", ") { if (isEntityProperty(it)) "this@toModel.${it.simpleName.asString()}.value" else fetchMappingsForGenericProperty(it) }
 
     val combinedCodeBlock = "($propertiesCodeBlock${ if (propertiesCodeBlock.isNotEmpty() && modelsCodeblock.isNotEmpty()) ", " else "" }$modelsCodeblock)"
 
@@ -260,4 +267,15 @@ fun createToModelExtensionFunction(entityClass: KSClassDeclaration, returns: Typ
 
 
     return function.build()
+}
+
+private fun fetchMappingsForGenericProperty(property: KSPropertyDeclaration): String {
+    val type = property.type.toTypeName()
+    val mapping = TypeMappings.entries.firstOrNull { it.type == type.toString() }
+
+    if (mapping != null) {
+        return "${property.simpleName.asString()}${mapping.transform()}"
+    }
+
+    return property.simpleName.asString()
 }

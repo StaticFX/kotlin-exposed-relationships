@@ -2,6 +2,10 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.EntityClass
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.javatime.CurrentDate
+import org.jetbrains.exposed.sql.javatime.CurrentDateTime
+import org.jetbrains.exposed.sql.javatime.date
+import org.jetbrains.exposed.sql.javatime.datetime
 import org.statix.BelongsTo
 import org.statix.HasMany
 import org.statix.Model
@@ -20,6 +24,9 @@ object Comments : IntIdTable() {
     val post = reference("post_id", Posts)
     val user = reference("user_id", Users)
     val content = text("content")
+
+    val createdAt = datetime("created_at").defaultExpression(CurrentDateTime)
+    val createdAtDate = date("created_at_date").defaultExpression(CurrentDate)
 }
 
 object Likes : IntIdTable() {
@@ -68,6 +75,8 @@ class Comment(id: EntityID<Int>) : Entity<Int>(id) {
     @BelongsTo
     var user by User referencedOn Comments.user
     var content by Comments.content
+
+    val createdAt by Comments.createdAt
 }
 
 @Model

@@ -12,6 +12,7 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-core:$kotlinExposedVersion")
     implementation("org.jetbrains.exposed:exposed-dao:$kotlinExposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$kotlinExposedVersion")
+    implementation("org.jetbrains.exposed:exposed-java-time:$kotlinExposedVersion")
     implementation("com.h2database:h2:2.2.224")
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
