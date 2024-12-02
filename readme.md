@@ -114,6 +114,8 @@ ksp("com.github.StaticFX.kotlin-exposed-relationships:processor:$kserVerion")
 
 To test if you have installed the compiler plugin correctly, use 
 ``gradle kspKotlin``
+
+#### Check [my recommendations](https://github.com/StaticFX/kotlin-exposed-relationships?tab=readme-ov-file#recomendations) to work with KSER.
  
 ### Code usage
 
