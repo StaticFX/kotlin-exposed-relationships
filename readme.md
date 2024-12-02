@@ -73,6 +73,9 @@ user.toModel().with {
 }
 ```
 
+### Nullable attributes
+KSER can handle nullable attributes, and will render then in the final model
+
 ### Nullable relationships
 KSER allows for nullable relationships, only exposing resolved relations at run time.
 
