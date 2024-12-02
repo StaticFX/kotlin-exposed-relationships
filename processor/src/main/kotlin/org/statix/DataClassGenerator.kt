@@ -12,6 +12,7 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
+import org.jetbrains.annotations.Nullable
 import java.util.*
 import kotlin.math.log
 
@@ -135,13 +136,14 @@ class DataClassGenerator(private val logger: KSPLogger, entityClass: KSClassDecl
 
     private fun buildSingleRelationProperty(property: KSPropertyDeclaration) {
         val propertyClassName = property.simpleName.asString()
+        val isNullable = property.type.resolve().isMarkedNullable
 
         val qualifiedName = property.type.resolve().declaration.qualifiedName?.getShortName() ?: return logger.error("Error while resolving type for property")
         val type = ClassName(modelPackage, qualifiedName)
 
         val propertyName = propertyClassName.replaceFirstChar { char -> char.lowercase(Locale.getDefault()) }
 
-        buildRelationProperty(propertyName, type, type.simpleName,false)
+        buildRelationProperty(propertyName, type, type.simpleName,false, isNullable)
     }
 
     private fun buildMultiRelationProperty(property: KSPropertyDeclaration, mappedClass: KSClassDeclaration) {
@@ -153,19 +155,19 @@ class DataClassGenerator(private val logger: KSPLogger, entityClass: KSClassDecl
 
         val propertyName = propertyClassName.replaceFirstChar { char -> char.lowercase(Locale.getDefault()) }
 
-        buildRelationProperty(propertyName, type, mappedClass.toClassName().simpleName, true)
+        buildRelationProperty(propertyName, type, mappedClass.toClassName().simpleName, true, false)
     }
 
-    private fun buildRelationProperty(name: String, type: TypeName, pureType: String, isMulti: Boolean) {
+    private fun buildRelationProperty(name: String, type: TypeName, pureType: String, isMulti: Boolean, isNullable: Boolean) {
         val resolvedRelationType = resolveRelationType(pureType, isMulti)
         val relationReceiverType = resolveReceiverRelationType(pureType)
 
         val relationPropertyName = "${name}Relation"
 
-        val lazyRelationProperty = buildLazyRelationProperty(name, resolvedRelationType, relationPropertyName, isMulti)
+        val lazyRelationProperty = buildLazyRelationProperty(name, resolvedRelationType, relationPropertyName, isMulti, isNullable)
         innerRelationsClass.addProperty(lazyRelationProperty)
 
-        val innerRelationFunction = buildInnerRelationFunction(name, relationReceiverType, name, isMulti)
+        val innerRelationFunction = buildInnerRelationFunction(name, relationReceiverType, name, isMulti, isNullable)
         innerRelationsClass.addFunction(innerRelationFunction)
 
         val relationProperty = ParameterSpec.builder(relationPropertyName, type.copy(nullable = true))
@@ -185,9 +187,6 @@ class DataClassGenerator(private val logger: KSPLogger, entityClass: KSClassDecl
             .initializer("null")
             .build()
 
-        val serializedProperty = buildSerializedRelationProperty(name, resolvedRelationType, isMulti)
-
-        //dataClassBuilder.addProperty(serializedProperty)
         dataClassBuilder.addProperty(lateInitRelationProperty)
     }
 
@@ -211,15 +210,15 @@ class DataClassGenerator(private val logger: KSPLogger, entityClass: KSClassDecl
         return ClassName(generatedPackage, "${type}ModelDTO.Relations")
     }
 
-    private fun buildLazyRelationProperty(propertyName: String, propertyType: TypeName, relationPropertyName: String, isMulti: Boolean): PropertySpec {
-        return PropertySpec.builder(propertyName, propertyType)
+    private fun buildLazyRelationProperty(propertyName: String, propertyType: TypeName, relationPropertyName: String, isMulti: Boolean, isNullable: Boolean): PropertySpec {
+        return PropertySpec.builder(propertyName, propertyType.copy(nullable = isNullable))
             .addModifiers(KModifier.PRIVATE)
-            .delegate(CodeBlock.of("lazy { ${if (isMulti) "$relationPropertyName!!.map { it.toModel() }" else "$relationPropertyName!!.toModel()" }}"))
+            .delegate(CodeBlock.of("lazy { ${if (isMulti) "$relationPropertyName!!.map { it.toModel() }" else "$relationPropertyName${if (isNullable) "?" else "!!"}.toModel()" }}"))
             .build()
     }
 
-    private fun buildInnerRelationFunction(functionName: String, lambdaReceiver: TypeName, relationPropertyName: String, isMulti: Boolean): FunSpec {
-        val applyCodeBlock = if (isMulti) "$relationPropertyName.forEach { it.with(block) }" else "$relationPropertyName.with { block() }"
+    private fun buildInnerRelationFunction(functionName: String, lambdaReceiver: TypeName, relationPropertyName: String, isMulti: Boolean, isNullable: Boolean): FunSpec {
+        val applyCodeBlock = if (isMulti) "$relationPropertyName.forEach { it.with(block) }" else "$relationPropertyName${if (isNullable) "?" else ""}.with { block() }"
         val codeBlock = """
             dbQuery {
                 this@$dataClassName.$relationPropertyName = $relationPropertyName

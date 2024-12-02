@@ -1,3 +1,4 @@
+import Comment.Companion.referrersOn
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.dao.Entity
 import org.jetbrains.exposed.dao.EntityClass
@@ -8,6 +9,7 @@ import org.jetbrains.exposed.sql.javatime.date
 import org.jetbrains.exposed.sql.javatime.datetime
 import org.statix.BelongsTo
 import org.statix.HasMany
+import org.statix.HasOne
 import org.statix.Model
 
 
@@ -32,6 +34,18 @@ object Comments : IntIdTable() {
 object Likes : IntIdTable() {
     val post = reference("post_id", Posts)
     val user = reference("user_id", Users)
+}
+
+object NullableLikes: IntIdTable() {
+    val like = reference("like_id", Likes).nullable()
+}
+
+@Model
+class NullableLike(id: EntityID<Int>): Entity<Int>(id) {
+    companion object: EntityClass<Int, NullableLike>(NullableLikes)
+
+    @HasOne
+    var like by Like optionalReferencedOn NullableLikes.like
 }
 
 @Model
@@ -87,3 +101,4 @@ class Like(id: EntityID<Int>) : Entity<Int>(id) {
     @BelongsTo
     var user by User referencedOn Likes.user
 }
+

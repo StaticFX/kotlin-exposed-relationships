@@ -17,7 +17,7 @@ class ModelTests {
 
     private fun buildDatabases() {
         transaction {
-            SchemaUtils.createMissingTablesAndColumns(Users, Posts, Likes, Comments)
+            SchemaUtils.createMissingTablesAndColumns(Users, Posts, Likes, Comments, NullableLikes)
         }
     }
 
@@ -111,8 +111,10 @@ class ModelTests {
             }
         }
 
+        val createdAt = transaction { comment.createdAt }
+
         val json = jsonSerializer.encodeToJsonElement(model)
-        assertEquals("""{"name":"TestUser","id":3,"posts":[{"content":"This is a post","id":2,"comments":[{"content":"Comment","createdAt":"${comment.createdAt}","id":1}]}],"comments":[{"content":"Comment","createdAt":"${comment.createdAt}","id":1,"post":{"content":"This is a post","id":2}}]}""", json.toString())
+        assertEquals("""{"name":"TestUser","id":3,"posts":[{"content":"This is a post","id":2,"comments":[{"content":"Comment","createdAt":"$createdAt","id":1}]}],"comments":[{"content":"Comment","createdAt":"$createdAt","id":1,"post":{"content":"This is a post","id":2}}]}""", json.toString())
     }
 
 
@@ -127,4 +129,32 @@ class ModelTests {
         assertEquals("""{"name":"TestUser","id":${user.id},"attributes":{"some value":"Test"}}""", json.toString())
     }
 
+    @Test
+    fun testNullableRelations() {
+        prepareDB()
+        val nullableLike = transaction { NullableLike.new { like = null  } }
+        val nullableLikeModel = nullableLike.toModel()
+
+        runBlocking {
+            nullableLikeModel.with { like() }
+        }
+
+        assertEquals("""{"id":${nullableLikeModel.id}}""", jsonSerializer.encodeToJsonElement(nullableLikeModel).toString())
+
+        val user = prepareUser()
+        val post = preparePost(user)
+        val like = transaction { Like.new {
+            this.user = user
+            this.post = post
+        } }
+
+        val likeID = transaction { like.id.value }
+
+        transaction { nullableLike.like = like }
+        println(transaction { nullableLike.like })
+        val newModel = runBlocking { nullableLike.toModel().with { like() } }
+
+        println()
+        assertEquals("""{"id":${newModel.id},"like":{"id":${likeID}}}""", jsonSerializer.encodeToJsonElement(newModel).toString())
+    }
 }
