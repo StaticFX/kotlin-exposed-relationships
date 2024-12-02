@@ -239,13 +239,27 @@ public data class UserModelDTO(
   }
 }
 ```
+## Recomendations
+
+IntelliJ's default code generation does not really handle KSP plugins well. When adding a new model, you will need to rerun the ksp task to generate the required files. This can be frustrating to work with, so i recomment to create a custom tast which executed `gradle clean build` which will make sure to generate all the files. If your build times are long, you can also try to use `gradle clean kspKotlin`.
+
+Also adding the generated files to your IntelliJ's sources adds code completion to your project.
+
+```kotlin
+kotlin {
+    sourceSets.main {
+        kotlin.srcDir("build/generated/ksp/main/kotlin") <-- Check your build/generated folder structure and insert here.
+    }
+}
+```
+
 
 ## Roadmap
 
 - [ ] Add CI/CD Pipeline with automatic release
 - [ ] Enhance documentation, by generating javaDocs
-- [ ] Find a workaround for nullable attributes
-- [ ] Support more custom datatypes like DateTimes
+- [x] Find a workaround for nullable attributes
+- [x] Support more custom datatypes like DateTimes
 - [x] Support more attributes
 
 ## Contributing 
