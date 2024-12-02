@@ -17,7 +17,7 @@ class ModelTests {
 
     private fun buildDatabases() {
         transaction {
-            SchemaUtils.createMissingTablesAndColumns(Users, Posts, Likes, Comments, NullableLikes)
+            SchemaUtils.createMissingTablesAndColumns(Users, Posts, Likes, Comments, NullableLikes, NullableAttributes)
         }
     }
 
@@ -157,4 +157,18 @@ class ModelTests {
         println()
         assertEquals("""{"id":${newModel.id},"like":{"id":${likeID}}}""", jsonSerializer.encodeToJsonElement(newModel).toString())
     }
+
+
+    @Test
+    fun testNullableAttributes() {
+        prepareDB()
+        val nullable = transaction { NullableAttribute.new {
+            nullableString = "Test string"
+            nullableInt = null
+        } }
+
+        val model = nullable.toModel()
+        assertEquals("""{"nullableString":"Test string","nullableInt":null,"id":1}""",jsonSerializer.encodeToJsonElement(model).toString())
+    }
+
 }

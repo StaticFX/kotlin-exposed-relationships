@@ -40,6 +40,19 @@ object NullableLikes: IntIdTable() {
     val like = reference("like_id", Likes).nullable()
 }
 
+object NullableAttributes: IntIdTable() {
+    val nullableString = text("nullable_string").nullable()
+    val nullableInt = integer("nullable_int").nullable()
+}
+
+@Model
+class NullableAttribute(id: EntityID<Int>): Entity<Int>(id) {
+    companion object: EntityClass<Int, NullableAttribute>(NullableAttributes)
+
+    var nullableString by NullableAttributes.nullableString
+    var nullableInt by NullableAttributes.nullableInt
+}
+
 @Model
 class NullableLike(id: EntityID<Int>): Entity<Int>(id) {
     companion object: EntityClass<Int, NullableLike>(NullableLikes)
