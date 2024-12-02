@@ -73,6 +73,9 @@ user.toModel().with {
 }
 ```
 
+### Nullable relationships
+KSER allows for nullable relationships, only exposing resolved relations at run time.
+
 ## Usage
 
 #### Prerequisites
@@ -109,7 +112,22 @@ ksp("com.github.StaticFX.kotlin-exposed-relationships:processor:$kserVerion")
 To test if you have installed the compiler plugin correctly, use 
 ``gradle kspKotlin``
  
-#### Code usage
+### Code usage
+
+#### Prerequisites
+
+KSER builds heavily on Nullable values. Therefore attributes being null, when not set. At this time, it is not possible to use kotlinx serialization to only for example handle resolved relations. Therefore unresolved relations will be set to null. This behaviour can be controlled by configuring your formatter. 
+
+#### JSON Example
+```kotlin
+private val jsonSerializer = Json {
+    prettyPrint = true
+    encodeDefaults = false
+    explicitNulls = true
+}
+```
+
+#### Usage
 
 1. To create model classes you can use the `@Model` annotation on your desired entity.
 2. Then rebuild your project using `gradle clean build`. This will generate all necessary classes and functions.
