@@ -1,11 +1,11 @@
 plugins {
     kotlin("jvm")
     id("com.google.devtools.ksp")
-    kotlin("plugin.serialization") version "2.0.20"
+    kotlin("plugin.serialization") version "2.1.0"
 }
 
 val kotlinExposedVersion = "0.55.0"
-val kotlin_version: String = "2.0.21"
+val kotlin_version: String = "2.1.0"
 
 dependencies {
     implementation(kotlin("stdlib"))
