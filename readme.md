@@ -1,5 +1,11 @@
 # Kotlin Exposed Serialized Relationships
 
+## Overview
+
+[Install](https://github.com/StaticFX/kotlin-exposed-relationships/edit/master/readme.md#usage)
+[Usage](https://github.com/StaticFX/kotlin-exposed-relationships/edit/master/readme.md#code-usage)
+[With KTOR](https://github.com/StaticFX/kotlin-exposed-relationships/edit/master/readme.md#with-ktor)
+
 ### Serialize your Database relationships by selecting them and avoid cyclic relations 
 
 KESR Works by generating DTO classes from your Database Entities using KSP as a compiler Plugin.
@@ -117,13 +123,13 @@ To test if you have installed the compiler plugin correctly, use
 
 #### Check [my recommendations](https://github.com/StaticFX/kotlin-exposed-relationships?tab=readme-ov-file#recomendations) to work with KSER.
  
-### Code usage
+## Code usage
 
-#### Prerequisites
+### Prerequisites
 
 KSER builds heavily on Nullable values. Therefore attributes being null, when not set. At this time, it is not possible to use kotlinx serialization to only for example handle resolved relations. Therefore unresolved relations will be set to null. This behaviour can be controlled by configuring your formatter. 
 
-#### JSON Example
+### JSON Example
 ```kotlin
 private val jsonSerializer = Json {
     prettyPrint = true
@@ -136,7 +142,21 @@ The most important value is `encodeDefaults` as this will tell the serializer to
 
 Play around with the values as you please, the configuration above, is just my personal recommendation.
 
-#### Usage
+### With KTOR
+
+You can easily use KSER with KTOR by configuring the serializer in the setup, for example:
+
+```kotlin
+fun Application.configureSerialization() {
+    install(ContentNegotiation) {
+        json(json = Json {
+            encodeDefaults = false
+        })
+    }
+}
+```
+
+### Usage
 
 1. To create model classes you can use the `@Model` annotation on your desired entity.
 2. Then rebuild your project using `gradle clean build`. This will generate all necessary classes and functions.
