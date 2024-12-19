@@ -2,11 +2,11 @@
 
 ## Overview
 
-[Install](https://github.com/StaticFX/kotlin-exposed-relationships/master/readme.md#usage)
+[Install](https://github.com/StaticFX/kotlin-exposed-relationships?tab=readme-ov-file#usage)
 
-[Usage](https://github.com/StaticFX/kotlin-exposed-relationships/master/readme.md#code-usage)
+[Usage](https://github.com/StaticFX/kotlin-exposed-relationships?tab=readme-ov-file#usage-1)
 
-[With KTOR](https://github.com/StaticFX/kotlin-exposed-relationships/master/readme.md#with-ktor)
+[With KTOR](https://github.com/StaticFX/kotlin-exposed-relationships?tab=readme-ov-file#with-ktor)
 
 ### Serialize your Database relationships by selecting them and avoid cyclic relations 
 
