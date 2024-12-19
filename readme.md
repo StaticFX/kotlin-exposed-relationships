@@ -132,6 +132,10 @@ private val jsonSerializer = Json {
 }
 ```
 
+The most important value is `encodeDefaults` as this will tell the serializer to not serialize the default values. KSER will set the default values to null and when resolving the relationship override them. Afterwards, because the default was modified, the values will be correctly encoded. 
+
+Play around with the values as you please, the configuration above, is just my personal recommendation.
+
 #### Usage
 
 1. To create model classes you can use the `@Model` annotation on your desired entity.
