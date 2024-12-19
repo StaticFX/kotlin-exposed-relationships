@@ -3,7 +3,9 @@
 ## Overview
 
 [Install](https://github.com/StaticFX/kotlin-exposed-relationships/edit/master/readme.md#usage)
+
 [Usage](https://github.com/StaticFX/kotlin-exposed-relationships/edit/master/readme.md#code-usage)
+
 [With KTOR](https://github.com/StaticFX/kotlin-exposed-relationships/edit/master/readme.md#with-ktor)
 
 ### Serialize your Database relationships by selecting them and avoid cyclic relations 
