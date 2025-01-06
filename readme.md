@@ -182,6 +182,13 @@ Use kotlinx.serialization's inbuilt Json functions to build a JSON Element!
 1. Because this library uses KSP, there is no on the fly code generation. So you will have to run `gradle kspKotlin` everytime you annotate a new model.
 2. Currently, there is no real way to get database entities from models, but this on the roadmap.
 
+### Custom mappings
+
+Because not all types which are commonly used in KTOR have default serializers, KSER will automatically transform their type by mapping and transforming them.
+For example if a property is type UUID, it will be mapped to a String and transformed using the .toString() call.
+
+More mappings can be found [here](https://github.com/StaticFX/kotlin-exposed-relationships/blob/master/processor/src/main/kotlin/org/statix/TypeMappings.kt)
+
 ## How it works
 
 KESR leverages KSP as a compiler addon to analyze the code you annotated with the `@Model` annotation.
@@ -189,7 +196,7 @@ All declared properties are received and filtered into generic and model propert
 Model properties are related to another model. The processor finds the by looking for the EntityID type in the property.
 
 Then a new data class based on these properties is generated. The constructor includes all generic properties, and transient fields for the relations.
-An inner Relations class is used to lazy load the relationships and provide context to the selector. 
+An inner Relations class is used to lazy load the relationships and provide context to the selector.
 
 ### Example
 
