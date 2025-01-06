@@ -253,7 +253,12 @@ fun createToModelExtensionFunction(entityClass: KSClassDeclaration, returns: Typ
 
     val modelsCodeblock = modelProperties.joinToString { if (genericsIncludeModel(it.type.resolve().arguments)) "${it.simpleName.asString()}.toList()" else it.simpleName.asString() }
 
-    val propertiesCodeBlock = genericProperties.joinToString(", ") { if (isEntityProperty(it)) "this@toModel.${it.simpleName.asString()}.value" else fetchMappingsForGenericProperty(it) }
+    val propertiesCodeBlock = genericProperties.joinToString(", ") {
+        if (isEntityProperty(it))
+            fetchMappingsForEntityProperty(it)
+        else
+            fetchMappingsForGenericProperty(it)
+    }
 
     val combinedCodeBlock = "($propertiesCodeBlock${ if (propertiesCodeBlock.isNotEmpty() && modelsCodeblock.isNotEmpty()) ", " else "" }$modelsCodeblock)"
 
@@ -274,6 +279,17 @@ private fun fetchMappingsForGenericProperty(property: KSPropertyDeclaration): St
 
     if (mapping != null) {
         return "${property.simpleName.asString()}${mapping.transform()}"
+    }
+
+    return property.simpleName.asString()
+}
+
+private fun fetchMappingsForEntityProperty(property: KSPropertyDeclaration): String {
+    val type = property.type.toTypeName()
+    val mapping = TypeMappings.entries.firstOrNull { it.type == type.toString() }
+
+    if (mapping != null) {
+        return "this@toModel.${property.simpleName.asString()}.value${mapping.transform()}"
     }
 
     return property.simpleName.asString()
